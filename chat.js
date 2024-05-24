@@ -1,27 +1,26 @@
 import {chat,funcoes} from "./inicializaChat.js"
+import { incorporarDocumentos, incorporarPergunta, leArquivos } from "./embeddig.js";
 
-
+const arquivos = await leArquivos(["Pacotes_Argentina.txt","Pacotes_EUA.txt","Politicas.txt"]);
+const documentos = await incorporarDocumentos(arquivos);
 
 export async function executaChat(mensagem) {
   
-  const result = await chat.sendMessage(mensagem);
-  const response = await result.response;
-
-  if (response.candidates.length === 0){
-    throw new error ('No candidates')
-  };
+  let doc = await incorporarPergunta (mensagem,documentos);  
+  let prompt = mensagem + " talvez esse trecho te ajude a formular a resposta " + doc.text;
+  const result = await chat.sendMessage(prompt);
+  const response = await result.response
 
   const content = response.candidates[0].content;
-  if (content.parts.length === 0){
-    throw new error ('No parts')
-  }
   
   const fc = content.parts[0].functionCall;
+  const text = content.parts.map(({text}) => text).join("");
+  console.log(text);
+  console.log(fc);
+
   if (fc){
     const { name, args } = fc;
     const fn = funcoes[name];
-    console.log(fc);
-    console.log(fn);
     if (!fn){
       throw new Error (`Unknown function ${name}`);
     }
@@ -36,21 +35,14 @@ export async function executaChat(mensagem) {
           },
         }
     
-    console.log(fr);
-
     const request2 = [fr];    
-    const response2 = await chat.sendMessage(request2);
-    console.log(response2);
-    
-    const result2 = response2.response;
-    console.log(result2.text() + 'texto1');
-    
+    const response2 = await chat.sendMessage(request2);  
+    const result2 = response2.response;    
     return result2.text();
     
-    }else if (text){
-      console.log(text + 'texto2');
-      return text;
-    }
-
+  }else if (text){
+    return text;
   }
+
+}
 
